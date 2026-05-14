@@ -1,63 +1,46 @@
-package pe.edu.upc.easyvet.home.presentation.navigation
+﻿package com.example.neurozen_front.neurozen.home.presentation.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.example.neurozen_front.neurozen.data.session.UserSession
+import com.example.neurozen_front.neurozen.home.presentation.login.Login
+import com.example.neurozen_front.neurozen.home.presentation.onboarding.OnBoarding
+
+private enum class AppStage {
+    Welcome,
+    Login,
+    Dashboard
+}
 
 @Composable
-fun Main() {
+fun NeurozenApp() {
+    var stage by remember { mutableStateOf(AppStage.Welcome) }
 
-    val selectedTab = rememberSaveable {
-        mutableStateOf(MainTab.Home)
-    }
-
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                MainTab.entries.forEach { tab ->
-                    val selected = selectedTab.value == tab
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = {
-                            selectedTab.value = tab
-                        },
-                        icon = {
-                            Icon(
-                                painter = painterResource(if (selected) tab.iconFilled else tab.icon),
-                                contentDescription = tab.label,
-                                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                            )
-                        },
-                        label = {
-                            Text(text = tab.label)
-                        }
-                    )
-                }
+    when (stage) {
+        AppStage.Welcome -> OnBoarding(
+            onStart = { stage = AppStage.Login },
+            onExplore = {
+                UserSession.clear()
+                stage = AppStage.Dashboard
             }
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
+        )
 
-            when (selectedTab.value) {
-                MainTab.Home -> HomeNavHost()
-                else -> Text(selectedTab.value.label)
+        AppStage.Login -> Login(
+            onLoginSuccess = { stage = AppStage.Dashboard },
+            onDemoAccess = {
+                UserSession.clear()
+                stage = AppStage.Dashboard
             }
-        }
+        )
 
+        AppStage.Dashboard -> HomeNavHost(
+            onLogout = {
+                UserSession.clear()
+                stage = AppStage.Login
+            }
+        )
     }
 }

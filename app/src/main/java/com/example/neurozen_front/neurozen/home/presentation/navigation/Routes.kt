@@ -1,16 +1,6 @@
-package pe.edu.upc.easyvet.home.presentation.navigation
-
-import kotlinx.serialization.Serializable
-
-@Serializable
-object HomeRoute
-
-@Serializable
-object FavoritesRoute
-
-@Serializable
-object CartRoute
-
-@Serializable
-object ProfileRoute
-
+package com.example.neurozen_front.neurozen.home.presentation.navigation
+object NeurozenRoutes {
+    const val Welcome = "welcome"
+    const val Login = "login"
+    const val Dashboard = "dashboard"
+}
