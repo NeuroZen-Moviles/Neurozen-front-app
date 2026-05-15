@@ -13,6 +13,9 @@ interface NeurozenApiService {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
+    @POST("auth/register")
+    suspend fun register(@Body request: RegisterRequest): Response<SingleResponse<ApiUser>>
+
     @GET("users/{id}")
     suspend fun getUser(
         @Path("id") userId: Long,

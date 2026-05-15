@@ -3,6 +3,7 @@ package com.example.neurozen_front.neurozen.home.presentation.navigation
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,7 +20,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.neurozen_front.R
 import com.example.neurozen_front.neurozen.home.presentation.detail.ProductDetail
 import com.example.neurozen_front.neurozen.home.presentation.home.Home
@@ -27,12 +28,14 @@ import com.example.neurozen_front.neurozen.home.presentation.home.HomeViewModel
 import com.example.neurozen_front.neurozen.home.presentation.home.MeditationSession
 import com.example.neurozen_front.neurozen.home.presentation.home.ProductCard
 import com.example.neurozen_front.neurozen.home.presentation.home.NeurozenUser
+import com.example.neurozen_front.neurozen.home.presentation.psychologists.PsychologistsScreen
+import com.example.neurozen_front.neurozen.home.presentation.zenbot.ZenBotScreen
 
 @Composable
 fun HomeNavHost(
     onLogout: () -> Unit = {}
 ) {
-    val homeViewModel: HomeViewModel = viewModel()
+    val homeViewModel: HomeViewModel = hiltViewModel()
     val state by homeViewModel.homeState.collectAsState()
     val selectedTabState = remember { mutableStateOf(MainTab.Home) }
     val selectedSessionIdState = remember { mutableStateOf<String?>(null) }
@@ -74,7 +77,8 @@ fun HomeNavHost(
                         homeViewModel = homeViewModel,
                         onSessionClick = { selectedSessionIdState.value = it.id }
                     )
-                    MainTab.Breathing -> BreathingScreen()
+                    MainTab.Psychologists -> PsychologistsScreen()
+                    MainTab.ZenBot -> ZenBotScreen()
                     MainTab.Sessions -> SessionsScreen(
                         sessions = state.sessions,
                         onSessionClick = { selectedSessionIdState.value = it.id },
@@ -202,11 +206,16 @@ private fun SessionsScreen(
 private fun ProfileScreen(user: NeurozenUser, onLogout: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            Surface(modifier = Modifier.size(72.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(user.name.take(1), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-                }
-            }
+            // Imagen de usuario real configurada
+            Image(
+                painter = painterResource(id = R.drawable.usuario_demo),
+                contentDescription = "Foto de perfil",
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                contentScale = ContentScale.Crop
+            )
             Column {
                 Text(user.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(user.email, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -15,14 +15,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun Login(
     onLoginSuccess: () -> Unit,
     onDemoAccess: () -> Unit = onLoginSuccess
 ) {
-    val loginViewModel: LoginViewModel = viewModel()
+    val loginViewModel: LoginViewModel = hiltViewModel()
     val state by loginViewModel.uiState.collectAsState()
 
     Box(
@@ -60,13 +60,13 @@ fun Login(
             Spacer(modifier = Modifier.height(32.dp))
             
             Text(
-                text = "Bienvenido de vuelta",
+                text = if (state.isRegisterMode) "Crea tu cuenta" else "Bienvenido de vuelta",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "Tu paz te espera. Ingresa tus datos.",
+                text = if (state.isRegisterMode) "Únete a la comunidad de paz mental" else "Tu paz te espera. Ingresa tus datos.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -84,6 +84,21 @@ fun Login(
                     modifier = Modifier.padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    if (state.isRegisterMode) {
+                        OutlinedTextField(
+                            value = state.name,
+                            onValueChange = { loginViewModel.onNameChange(it) },
+                            label = { Text("Nombre completo") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            )
+                        )
+                    }
+
                     OutlinedTextField(
                         value = state.email,
                         onValueChange = { loginViewModel.onEmailChange(it) },
@@ -125,10 +140,27 @@ fun Login(
                         }
                     }
 
+                    if (state.successMessage != null) {
+                        Surface(
+                            color = Color(0xFFE8F5E9),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = state.successMessage.orEmpty(),
+                                color = Color(0xFF2E7D32),
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Button(
-                        onClick = { loginViewModel.login(onSuccess = onLoginSuccess) },
+                        onClick = { 
+                            if (state.isRegisterMode) loginViewModel.register() 
+                            else loginViewModel.login(onSuccess = onLoginSuccess) 
+                        },
                         enabled = !state.isLoading,
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(16.dp)
@@ -140,8 +172,23 @@ fun Login(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("Iniciar Sesión", fontWeight = FontWeight.Bold)
+                            Text(
+                                text = if (state.isRegisterMode) "Registrarse" else "Iniciar Sesión",
+                                fontWeight = FontWeight.Bold
+                            )
                         }
+                    }
+
+                    TextButton(
+                        onClick = { loginViewModel.toggleMode() },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text(
+                            text = if (state.isRegisterMode) "¿Ya tienes cuenta? Inicia sesión" 
+                                   else "¿No tienes cuenta? Regístrate",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
