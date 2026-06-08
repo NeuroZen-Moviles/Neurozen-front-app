@@ -29,7 +29,8 @@ object NetworkModule {
             context,
             NeurozenDatabase::class.java,
             "neurozen_db"
-        ).build()
+        ).fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides

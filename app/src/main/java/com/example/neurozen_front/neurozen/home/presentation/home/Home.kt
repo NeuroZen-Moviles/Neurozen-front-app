@@ -2,9 +2,12 @@ package com.example.neurozen_front.neurozen.home.presentation.home
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -23,8 +26,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.example.neurozen_front.R
+import com.example.neurozen_front.neurozen.data.local.AppointmentEntity
 import com.example.neurozen_front.neurozen.home.presentation.components.CategoryItem
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun Home(
@@ -47,6 +55,16 @@ fun Home(
         // 2. Daily Quote (Simulado para dar paz)
         item {
             DailyQuoteCard(modifier = Modifier.padding(horizontal = 20.dp))
+        }
+
+        // Nuevo: Recordatorio de Próxima Cita
+        if (state.upcomingAppointments.isNotEmpty()) {
+            item {
+                NextAppointmentSummary(
+                    appointment = state.upcomingAppointments.first(),
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+            }
         }
 
         // 3. Mood Selector (Más intuitivo)
@@ -116,8 +134,15 @@ fun Home(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold
                 )
-                TextButton(onClick = { /* Navegar a todas */ }) {
-                    Text("Ver todas")
+                Row {
+                    if (state.healthHistory.isNotEmpty()) {
+                        TextButton(onClick = { /* Ver historial */ }) {
+                            Text("Ver Historial")
+                        }
+                    }
+                    TextButton(onClick = { homeViewModel.setShowEmotionalForm(true) }) {
+                        Text("Check-in")
+                    }
                 }
             }
         }
@@ -132,22 +157,165 @@ fun Home(
             }
         }
     }
+
+    if (state.showEmotionalForm) {
+        EmotionalCheckInDialog(
+            onDismiss = { homeViewModel.setShowEmotionalForm(false) },
+            onSubmit = { stress, sleep, heart, notes ->
+                homeViewModel.submitEmotionalCheck(stress, sleep, heart, notes)
+                homeViewModel.setShowEmotionalForm(false)
+            }
+        )
+    }
 }
 
 @Composable
-private fun HeroHeader(state: HomeState, onRefresh: () -> Unit) {
+fun EmotionalCheckInDialog(
+    onDismiss: () -> Unit,
+    onSubmit: (Int, Int, Int, String) -> Unit
+) {
+    var stressLevel by remember { mutableFloatStateOf(5f) }
+    var sleepHours by remember { mutableFloatStateOf(7f) }
+    var heartRate by remember { mutableFloatStateOf(75f) }
+    var notes by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("¿Cómo va tu día?", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Column {
+                    Text("Nivel de Estrés: ${stressLevel.toInt()}", style = MaterialTheme.typography.bodyMedium)
+                    Slider(
+                        value = stressLevel,
+                        onValueChange = { stressLevel = it },
+                        valueRange = 1f..10f,
+                        steps = 8
+                    )
+                }
+                Column {
+                    Text("Horas de Sueño: ${sleepHours.toInt()}h", style = MaterialTheme.typography.bodyMedium)
+                    Slider(
+                        value = sleepHours,
+                        onValueChange = { sleepHours = it },
+                        valueRange = 0f..12f,
+                        steps = 11
+                    )
+                }
+                Column {
+                    Text("Ritmo Cardiaco: ${heartRate.toInt()} bpm", style = MaterialTheme.typography.bodyMedium)
+                    Slider(
+                        value = heartRate,
+                        onValueChange = { heartRate = it },
+                        valueRange = 40f..150f
+                    )
+                }
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Notas o pensamientos") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = { 
+                onSubmit(stressLevel.toInt(), sleepHours.toInt(), heartRate.toInt(), notes)
+            }) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+@Composable
+private fun NextAppointmentSummary(
+    appointment: AppointmentEntity,
+    modifier: Modifier = Modifier
+) {
+    val dateStr = SimpleDateFormat("EEEE d 'de' MMMM", Locale("es", "PE")).format(Date(appointment.dateMillis))
+    
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = android.R.drawable.ic_menu_my_calendar),
+                    contentDescription = null,
+                    tint = Color.White
+                )
+            }
+            Column {
+                Text(
+                    text = "Próxima sesión",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Con ${appointment.psychologistName}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                if (appointment.psychologistSpecialty.isNotEmpty()) {
+                    Text(
+                        text = appointment.psychologistSpecialty,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    )
+                }
+                Text(
+                    text = dateStr.replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun HeroHeader(state: HomeState, onRefresh: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(200.dp)
+            .height(220.dp)
     ) {
-        // Fondo con gradiente natural
+        // Fondo con imagen remota y gradiente
+        AsyncImage(
+            model = state.headerImageUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer)
+                        listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent, Color.Black.copy(alpha = 0.7f))
                     )
                 )
         )
@@ -162,12 +330,12 @@ private fun HeroHeader(state: HomeState, onRefresh: () -> Unit) {
                 text = "Hola, ${state.user.name}",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimary
+                color = Color.White
             )
             Text(
                 text = state.greeting,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                color = Color.White.copy(alpha = 0.9f)
             )
         }
         

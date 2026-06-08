@@ -6,36 +6,86 @@ import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
-import retrofit2.http.Query
 
 interface NeurozenApiService {
 
-    @POST("auth/login")
-    suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
+    // --- Módulo de Autenticación (IAM) ---
+    // Según AuthenticationController.cs: [Route("api/v1/[controller]")] -> api/v1/authentication
+    
+    @POST("api/v1/authentication/sign-in")
+    suspend fun signIn(@Body request: SignInRequest): Response<SignInResponse>
 
-    @POST("auth/register")
-    suspend fun register(@Body request: RegisterRequest): Response<SingleResponse<ApiUser>>
+    @POST("api/v1/authentication/sign-up")
+    suspend fun signUp(@Body request: SignUpRequest): Response<SignUpResponse>
 
-    @GET("users/{id}")
-    suspend fun getUser(
-        @Path("id") userId: Long,
+    // --- Módulo de Psicólogos (Professionals) ---
+    // Según ProfessionalsController.cs en el backend
+
+    @GET("api/v1/professionals")
+    suspend fun getProfessionals(
         @Header("Authorization") bearerToken: String
-    ): Response<SingleResponse<ApiUser>>
+    ): Response<List<ProfessionalResource>>
 
-    @GET("users/{id}/health_metrics")
+    @GET("api/v1/professionals/{id}")
+    suspend fun getProfessionalById(
+        @Path("id") id: String, // Cambiado de Long a String (Guid)
+        @Header("Authorization") bearerToken: String
+    ): Response<ProfessionalResource>
+
+    // --- Módulo de Citas (Appointments) ---
+
+    @POST("api/v1/appointments")
+    suspend fun createAppointment(
+        @Body request: AppointmentRequest,
+        @Header("Authorization") bearerToken: String
+    ): Response<AppointmentResponse>
+
+    @GET("api/v1/patients/{patientId}/appointments")
+    suspend fun getPatientAppointments(
+        @Path("patientId") patientId: String, // Cambiado de Long a String (Guid)
+        @Header("Authorization") bearerToken: String
+    ): Response<List<AppointmentResponse>>
+
+    // --- Módulo de Dashboard ---
+
+    @GET("api/v1/users/{userId}/dashboard")
+    suspend fun getDashboard(
+        @Path("userId") userId: String,
+        @Header("Authorization") bearerToken: String
+    ): Response<DashboardResponse>
+
+    // --- Módulo de Contenidos (Meditaciones) ---
+
+    @GET("api/v1/contents/meditations")
+    suspend fun getMeditations(
+        @Header("Authorization") bearerToken: String
+    ): Response<List<MeditationResource>>
+
+    // --- Módulo de Suscripciones ---
+
+    @POST("api/v1/subscriptions")
+    suspend fun createSubscription(
+        @Body request: SubscriptionRequest,
+        @Header("Authorization") bearerToken: String
+    ): Response<SubscriptionResource>
+
+    @GET("api/v1/users/{userId}/subscription")
+    suspend fun getUserSubscription(
+        @Path("userId") userId: String,
+        @Header("Authorization") bearerToken: String
+    ): Response<SubscriptionResource>
+
+    // --- Módulo de Métricas de Salud (Triggers/Emociones) ---
+
+    @POST("api/v1/health_metrics")
+    suspend fun createHealthMetric(
+        @Body request: HealthMetricRequest,
+        @Header("Authorization") bearerToken: String
+    ): Response<HealthMetricResource>
+
+    @GET("api/v1/users/{userId}/health_metrics")
     suspend fun getUserHealthMetrics(
-        @Path("id") userId: Long,
-        @Header("Authorization") bearerToken: String,
-        @Query("page") page: Int = 0,
-        @Query("size") size: Int = 20
-    ): Response<ListResponse<ApiHealthMetric>>
-
-    @GET("users/{id}/meditation_sessions")
-    suspend fun getUserMeditationSessions(
-        @Path("id") userId: Long,
-        @Header("Authorization") bearerToken: String,
-        @Query("page") page: Int = 0,
-        @Query("size") size: Int = 20
-    ): Response<ListResponse<ApiMeditationSession>>
+        @Path("userId") userId: String,
+        @Header("Authorization") bearerToken: String
+    ): Response<List<HealthMetricResource>>
 }
-

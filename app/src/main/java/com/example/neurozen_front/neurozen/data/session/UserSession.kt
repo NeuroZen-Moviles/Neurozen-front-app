@@ -9,7 +9,7 @@ data class UserSessionState(
     val token: String? = null,
     val refreshToken: String? = null,
     val expiresIn: Long? = null,
-    val userId: Long? = null,
+    val userId: String? = null, // Cambiado de Long a String para GUID de .NET
     val email: String? = null,
     val name: String? = null
 )
@@ -21,17 +21,18 @@ object UserSession {
     fun save(authSession: AuthSession) {
         _state.value = UserSessionState(
             token = authSession.token,
-            refreshToken = authSession.refreshToken,
-            expiresIn = authSession.expiresIn,
             userId = authSession.userId,
             email = authSession.email,
-            name = authSession.name
+            name = authSession.username // Backend usa username
         )
     }
 
     fun clear() {
         _state.value = UserSessionState()
     }
+
+    val current: UserSessionState?
+        get() = if (hasActiveSession()) _state.value else null
 
     fun hasActiveSession(): Boolean {
         return !_state.value.token.isNullOrBlank() && _state.value.userId != null
@@ -42,4 +43,3 @@ object UserSession {
         return if (token.startsWith("Bearer ")) token else "Bearer $token"
     }
 }
-

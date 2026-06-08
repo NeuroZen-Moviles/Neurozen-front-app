@@ -3,7 +3,7 @@ package com.example.neurozen_front.neurozen.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 
-@Database(entities = [AppointmentEntity::class], version = 1, exportSchema = false)
+@Database(entities = [AppointmentEntity::class], version = 2, exportSchema = false)
 abstract class NeurozenDatabase : RoomDatabase() {
     abstract fun appointmentDao(): AppointmentDao
 }

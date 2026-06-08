@@ -4,18 +4,16 @@ import android.util.Log
 import android.text.format.DateFormat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.neurozen_front.neurozen.data.network.ApiHealthMetric
-import com.example.neurozen_front.neurozen.data.network.ApiMeditationSession
-import com.example.neurozen_front.neurozen.data.network.DashboardPayload
+import com.example.neurozen_front.neurozen.data.local.AppointmentDao
+import com.example.neurozen_front.neurozen.data.local.AppointmentEntity
+import com.example.neurozen_front.neurozen.data.network.DashboardResponse
+import com.example.neurozen_front.neurozen.data.network.MeditationResource
 import com.example.neurozen_front.neurozen.data.network.NeurozenRepository
 import com.example.neurozen_front.neurozen.data.session.UserSession
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Date
@@ -23,22 +21,49 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: NeurozenRepository
+    private val repository: NeurozenRepository,
+    private val appointmentDao: AppointmentDao
 ) : ViewModel() {
     private val _homeState = MutableStateFlow(HomeState())
     val homeState: StateFlow<HomeState> = _homeState.asStateFlow()
 
+    private val headerImages = listOf(
+        "https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=1000",
+        "https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=1000",
+        "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1000",
+        "https://images.unsplash.com/photo-1528715471579-d1bcf0ba5e83?q=80&w=1000"
+    )
+
     init {
-        // Al iniciar, cargamos demo primero para que la UI responda instantáneamente
-        Log.d("HomeViewModel", "Iniciando con datos locales...")
+        viewModelScope.launch {
+            appointmentDao.getAllAppointments().collect { appointments ->
+                _homeState.update { it.copy(upcomingAppointments = appointments) }
+            }
+        }
         refresh()
+        loadMeditations()
+        loadHealthHistory()
+    }
+
+    private fun loadHealthHistory() {
+        viewModelScope.launch {
+            if (!UserSession.hasActiveSession()) return@launch
+            val userId = UserSession.state.value.userId ?: return@launch
+            val token = UserSession.bearerTokenOrEmpty()
+            repository.getHealthHistory(userId, token).onSuccess { history ->
+                _homeState.update { it.copy(healthHistory = history) }
+            }
+        }
     }
 
     fun refresh() {
         viewModelScope.launch {
-            _homeState.update { it.copy(isLoading = true, error = null) }
+            _homeState.update { it.copy(
+                isLoading = true, 
+                error = null,
+                headerImageUrl = headerImages.randomOrNull() ?: it.headerImageUrl
+            ) }
             
-            // Si no hay sesión, nos quedamos en modo demo sin siquiera intentar red
             if (!UserSession.hasActiveSession()) {
                 delay(300)
                 _homeState.update { it.copy(isLoading = false, connectedToApi = false) }
@@ -49,27 +74,25 @@ class HomeViewModel @Inject constructor(
             val userId = session.userId ?: return@launch
 
             try {
-                // Forzamos que la petición ocurra fuera del hilo de UI
                 val result = withContext(Dispatchers.IO) {
-                    try {
-                        repository.fetchDashboard(
-                            userId = userId,
-                            bearerToken = UserSession.bearerTokenOrEmpty()
-                        )
-                    } catch (e: Exception) {
-                        Result.failure(e)
-                    }
+                    repository.fetchDashboard(
+                        userId = userId,
+                        bearerToken = UserSession.bearerTokenOrEmpty()
+                    )
                 }
 
                 result.onSuccess { dashboard ->
                     _homeState.update { current ->
                         current.copy(
-                            user = current.user.copy(
-                                name = dashboard.user.name ?: current.user.name,
-                                email = dashboard.user.email ?: current.user.email
+                            user = current.user.copy(name = session.name ?: current.user.name),
+                            stressLevel = dashboard.stressLevel,
+                            energyLevel = 7,
+                            sleepHours = dashboard.sleepHours.toFloat(),
+                            healthMetrics = listOf(
+                                HealthMetric("Estrés", "${dashboard.stressLevel}/10", "Nivel actual", dashboard.stressLevel / 10f),
+                                HealthMetric("Sueño", "${dashboard.sleepHours} h", "Horas descansadas", dashboard.sleepHours / 12f),
+                                HealthMetric("Pulso", "${dashboard.heartRate} bpm", "Ritmo cardiaco", dashboard.heartRate / 150f)
                             ),
-                            healthMetrics = mapMetrics(dashboard.metrics),
-                            sessions = mapSessions(dashboard.sessions),
                             connectedToApi = true,
                             isLoading = false,
                             error = null,
@@ -77,44 +100,126 @@ class HomeViewModel @Inject constructor(
                         )
                     }
                 }.onFailure {
-                    _homeState.update { it.copy(
-                        isLoading = false, 
-                        connectedToApi = false,
-                        error = "Servidor no disponible (usando modo local)"
-                    ) }
+                    _homeState.update { it.copy(isLoading = false, connectedToApi = false) }
                 }
             } catch (e: Exception) {
-                _homeState.update { it.copy(isLoading = false, error = "Error inesperado") }
+                _homeState.update { it.copy(isLoading = false) }
             }
         }
     }
 
-    private fun mapMetrics(metrics: List<ApiHealthMetric>): List<HealthMetric> {
-        return metrics.take(3).map { 
-            HealthMetric("Salud", "${it.stressLevel}/10", "Pulso: ${it.heartRate}", (it.stressLevel ?: 0) / 10f)
-        }.ifEmpty { _homeState.value.healthMetrics }
+    private fun loadMeditations() {
+        viewModelScope.launch {
+            if (!UserSession.hasActiveSession()) return@launch
+            val result = repository.getMeditations(UserSession.bearerTokenOrEmpty())
+            result.onSuccess { meditations ->
+                _homeState.update { it.copy(sessions = mapSessions(meditations)) }
+            }
+        }
     }
 
-    private fun mapSessions(sessions: List<ApiMeditationSession>): List<MeditationSession> {
-        return sessions.map { 
+    private fun mapSessions(sessions: List<MeditationResource>): List<MeditationSession> {
+        val backupImages = listOf(
+            "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1000",
+            "https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=1000",
+            "https://images.unsplash.com/photo-1511295742364-917e7037a8ce?q=80&w=1000",
+            "https://images.unsplash.com/photo-1528715471579-d1bcf0ba5e83?q=80&w=1000",
+            "https://images.unsplash.com/photo-1508672019048-805c876b67e2?q=80&w=1000"
+        )
+        return sessions.mapIndexed { index, it -> 
             MeditationSession(
-                id = it.id?.toString() ?: "0",
-                title = it.title ?: "Sesión",
-                durationMinutes = it.duration ?: 10,
-                type = it.type ?: "Guided",
-                difficulty = it.difficulty ?: "Beginner",
-                description = it.description ?: "",
-                benefit = "Bienestar",
-                status = it.status ?: "Disponible"
+                id = it.id,
+                title = it.title,
+                durationMinutes = it.durationMinutes,
+                type = if (it.title.lowercase().contains("respiración")) "Respiración" else "Meditación",
+                difficulty = "Principiante",
+                description = it.description,
+                benefit = "Bienestar mental",
+                status = "Disponible",
+                imageUrl = if (it.imageUrl.isBlank()) backupImages[index % backupImages.size] else it.imageUrl,
+                audioUrl = it.audioUrl
             )
         }.ifEmpty { _homeState.value.sessions }
+    }
+
+    fun toggleTheme() {
+        _homeState.update { current ->
+            val nextTheme = if (current.user.themePreference == "Bosque claro") "Noche zen" else "Bosque claro"
+            current.copy(user = current.user.copy(themePreference = nextTheme))
+        }
     }
 
     fun setMood(mood: String) {
         _homeState.update { it.copy(selectedMood = mood) }
     }
 
-    fun toggleFavorite(id: String) { /* ... */ }
+    fun setShowEmotionalForm(show: Boolean) {
+        _homeState.update { it.copy(showEmotionalForm = show) }
+    }
+
+    fun toggleFavorite(id: String) {
+        _homeState.update { current ->
+            current.copy(
+                sessions = current.sessions.map {
+                    if (it.id == id) it.copy(isFavorite = !it.isFavorite) else it
+                }
+            )
+        }
+    }
+
+    fun updateSubscription(plan: String) {
+        viewModelScope.launch {
+            if (!UserSession.hasActiveSession()) return@launch
+            val userId = UserSession.state.value.userId ?: return@launch
+            val token = UserSession.bearerTokenOrEmpty()
+            
+            // Mapear nombre de plan a ID del backend
+            val planId = when(plan) {
+                "Básico" -> 1
+                "Avanzado" -> 2
+                "Zen+" -> 3
+                else -> 1
+            }
+
+            val request = com.example.neurozen_front.neurozen.data.network.SubscriptionRequest(
+                userId = userId,
+                planId = planId,
+                nameUser = _homeState.value.user.name,
+                lastNameUser = "",
+                emailUser = _homeState.value.user.email
+            )
+
+            val result = repository.createSubscription(request, token)
+            result.onSuccess {
+                _homeState.update { current ->
+                    current.copy(user = current.user.copy(subscriptionPlan = plan))
+                }
+            }.onFailure { e ->
+                _homeState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    fun submitEmotionalCheck(stress: Int, sleep: Int, heartRate: Int, notes: String) {
+        viewModelScope.launch {
+            if (!UserSession.hasActiveSession()) return@launch
+            val userId = UserSession.state.value.userId ?: return@launch
+            val token = UserSession.bearerTokenOrEmpty()
+
+            val request = com.example.neurozen_front.neurozen.data.network.HealthMetricRequest(
+                userId = userId,
+                stressLevel = stress,
+                sleepHours = sleep,
+                heartRate = heartRate,
+                notes = notes
+            )
+
+            repository.createHealthMetric(request, token).onSuccess {
+                refresh()
+                loadHealthHistory()
+            }
+        }
+    }
 
     fun completeSession(sessionId: String) {
         _homeState.update { current ->

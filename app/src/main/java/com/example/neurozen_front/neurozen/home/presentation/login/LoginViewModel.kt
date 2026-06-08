@@ -27,7 +27,7 @@ class LoginViewModel @Inject constructor(
     private val repository: NeurozenRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(LoginUiState(email = "demo@neurozen.app", password = "123456"))
+    private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     fun onNameChange(value: String) {
@@ -48,18 +48,15 @@ class LoginViewModel @Inject constructor(
 
     fun login(onSuccess: () -> Unit) {
         val current = _uiState.value
-        val validEmail = current.email.contains("@") && current.email.contains(".")
-        val validPassword = current.password.length >= 6
-
-        if (!validEmail || !validPassword) {
-            _uiState.update { it.copy(errorMessage = "Revisa correo y contrasena (minimo 6 caracteres)") }
+        if (current.name.isBlank() || current.password.length < 6) {
+            _uiState.update { it.copy(errorMessage = "Ingresa tu nombre de usuario y contraseña") }
             return
         }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            repository.login(email = current.email, password = current.password)
+            repository.login(username = current.name, password = current.password)
                 .onSuccess { session ->
                     UserSession.save(session)
                     _uiState.update { it.copy(isLoading = false, errorMessage = null) }
@@ -69,7 +66,7 @@ class LoginViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "No se pudo iniciar sesion"
+                            errorMessage = error.message ?: "Credenciales inválidas"
                         )
                     }
                 }
@@ -78,25 +75,27 @@ class LoginViewModel @Inject constructor(
 
     fun register() {
         val current = _uiState.value
-        if (current.name.isBlank() || current.email.isBlank() || current.password.length < 6) {
-            _uiState.update { it.copy(errorMessage = "Completa todos los campos correctamente") }
+        val username = current.name
+
+        if (username.isBlank() || current.email.isBlank() || current.password.length < 6) {
+            _uiState.update { it.copy(errorMessage = "Completa todos los campos (usuario, email y contraseña)") }
             return
         }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            repository.register(current.name, current.email, current.password)
+            repository.register(username, current.email, current.password)
                 .onSuccess {
                     _uiState.update { it.copy(
                         isLoading = false,
                         isRegisterMode = false,
-                        successMessage = "¡Registro exitoso! Ahora puedes iniciar sesión"
+                        successMessage = "¡Registro exitoso! Ahora puedes iniciar sesión con '$username'"
                     ) }
                 }
                 .onFailure { error ->
                     _uiState.update { it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "Error al registrar usuario"
+                        errorMessage = error.message ?: "Error al registrar usuario. Intenta con otro nombre."
                     ) }
                 }
         }

@@ -8,6 +8,7 @@ data class AppointmentEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val psychologistId: String,
     val psychologistName: String,
+    val psychologistSpecialty: String = "",
     val dateMillis: Long,
     val status: String = "Scheduled",
     val createdAt: Long = System.currentTimeMillis()

@@ -32,6 +32,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.neurozen_front.R
 
+import androidx.compose.ui.draw.clip
+import coil3.compose.AsyncImage
+
 @Composable
 fun ProductCard(
     session: MeditationSession,
@@ -50,17 +53,20 @@ fun ProductCard(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Imagen de la sesión (Placeholder de marca) con botón de favoritos
+            // Imagen de la sesión (Carga remota con AsyncImage)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(140.dp)
+                    .clip(RoundedCornerShape(16.dp))
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.neurozen_placeholder_session),
+                AsyncImage(
+                    model = session.imageUrl ?: R.drawable.neurozen_placeholder_session,
                     contentDescription = "Portada de la sesión ${session.title}",
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.neurozen_placeholder_session),
+                    error = painterResource(id = R.drawable.neurozen_placeholder_session)
                 )
                 
                 // Botón de Favorito flotante

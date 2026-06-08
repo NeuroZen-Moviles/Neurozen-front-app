@@ -84,11 +84,24 @@ fun Login(
                     modifier = Modifier.padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    OutlinedTextField(
+                        value = state.name,
+                        onValueChange = { loginViewModel.onNameChange(it) },
+                        label = { Text(if (state.isRegisterMode) "Nombre de usuario" else "Usuario") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                        )
+                    )
+
                     if (state.isRegisterMode) {
                         OutlinedTextField(
-                            value = state.name,
-                            onValueChange = { loginViewModel.onNameChange(it) },
-                            label = { Text("Nombre completo") },
+                            value = state.email,
+                            onValueChange = { loginViewModel.onEmailChange(it) },
+                            label = { Text("Correo electrónico") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
                             singleLine = true,
@@ -98,19 +111,6 @@ fun Login(
                             )
                         )
                     }
-
-                    OutlinedTextField(
-                        value = state.email,
-                        onValueChange = { loginViewModel.onEmailChange(it) },
-                        label = { Text("Correo electrónico") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                        )
-                    )
                     
                     OutlinedTextField(
                         value = state.password,

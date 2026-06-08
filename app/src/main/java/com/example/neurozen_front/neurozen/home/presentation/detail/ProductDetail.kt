@@ -25,6 +25,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,15 +35,27 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.neurozen_front.R
 import com.example.neurozen_front.neurozen.home.presentation.home.MeditationSession
+import coil3.compose.AsyncImage
+
 @Composable
 fun ProductDetail(
     session: MeditationSession,
     onBack: () -> Unit,
     onComplete: () -> Unit,
-    onFavoriteToggle: (String) -> Unit = {}
+    onFavoriteToggle: (String) -> Unit = {},
+    viewModel: AudioPlayerViewModel = hiltViewModel()
 ) {
+    val isPlaying by viewModel.isPlaying.collectAsState()
+
+    LaunchedEffect(session.audioUrl) {
+        session.audioUrl?.let { url ->
+            viewModel.playAudio(url)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -73,17 +88,43 @@ fun ProductDetail(
             }
         }
 
-        // Imagen de cabecera en el detalle
+        // Imagen de cabecera en el detalle (Carga remota)
         Card(
-            modifier = Modifier.fillMaxWidth().height(200.dp),
+            modifier = Modifier.fillMaxWidth().height(250.dp),
             shape = RoundedCornerShape(28.dp)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.neurozen_placeholder_session),
-                contentDescription = "Portada de la sesión",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = session.imageUrl ?: R.drawable.neurozen_placeholder_session,
+                    contentDescription = "Portada de la sesión",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.neurozen_placeholder_session),
+                    error = painterResource(id = R.drawable.neurozen_placeholder_session)
+                )
+                
+                // Botón Play/Pause sobre la imagen
+                if (session.audioUrl != null) {
+                    IconButton(
+                        onClick = { viewModel.togglePlayPause() },
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(72.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        )
+                    ) {
+                        Icon(
+                            painter = painterResource(
+                                id = if (isPlaying) R.drawable.pause else R.drawable.play
+                            ),
+                            contentDescription = if (isPlaying) "Pausar" else "Reproducir",
+                            modifier = Modifier.size(40.dp),
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
         }
 
         Card(
@@ -121,7 +162,11 @@ fun ProductDetail(
                 DetailLine("Beneficio", session.benefit)
             }
         }
-        Button(onClick = onComplete, modifier = Modifier.fillMaxWidth()) {
+        Button(
+            onClick = onComplete, 
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp)
+        ) {
             Text("Marcar como completada")
         }
     }

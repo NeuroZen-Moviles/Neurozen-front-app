@@ -5,6 +5,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -39,67 +41,90 @@ fun HomeNavHost(
     val state by homeViewModel.homeState.collectAsState()
     val selectedTabState = remember { mutableStateOf(MainTab.Home) }
     val selectedSessionIdState = remember { mutableStateOf<String?>(null) }
+    val showSubscriptionState = remember { mutableStateOf(false) }
+    val showOnlyFavorites = remember { mutableStateOf(false) }
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 0.dp
-            ) {
-                MainTab.entries.forEach { tab ->
-                    val selected = selectedTabState.value == tab
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = {
-                            selectedTabState.value = tab
-                            selectedSessionIdState.value = null
-                        },
-                        icon = {
-                            Icon(
-                                painter = painterResource(id = if (selected) tab.selectedIconRes else tab.iconRes),
-                                contentDescription = tab.label
+    // El tema ahora responde dinámicamente a la preferencia del usuario
+    com.example.neurozen_front.ui.theme.NeurozenTheme(
+        darkTheme = state.user.themePreference == "Noche zen"
+    ) {
+        Scaffold(
+            bottomBar = {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 0.dp
+                ) {
+                    MainTab.entries.forEach { tab ->
+                        val selected = selectedTabState.value == tab
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = {
+                                selectedTabState.value = tab
+                                selectedSessionIdState.value = null
+                                showSubscriptionState.value = false
+                                // Si cambiamos de pestaña, reseteamos el filtro de favoritos excepto si volvemos a Sesiones
+                                if (tab != MainTab.Sessions) showOnlyFavorites.value = false
+                            },
+                            icon = { Icon(imageVector = tab.icon, contentDescription = tab.label) },
+                            label = { Text(tab.label) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
                             )
-                        },
-                        label = { Text(tab.label) }
-                    )
+                        )
+                    }
                 }
             }
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when (val currentSession = findSession(state.sessions, selectedSessionIdState.value)) {
-                null -> when (selectedTabState.value) {
-                    MainTab.Home -> Home(
-                        homeViewModel = homeViewModel,
-                        onSessionClick = { selectedSessionIdState.value = it.id }
-                    )
-                    MainTab.Psychologists -> PsychologistsScreen()
-                    MainTab.ZenBot -> ZenBotScreen()
-                    MainTab.Sessions -> SessionsScreen(
-                        sessions = state.sessions,
-                        onSessionClick = { selectedSessionIdState.value = it.id },
-                        onFavoriteToggle = { homeViewModel.toggleFavorite(it) }
-                    )
-                    MainTab.Profile -> ProfileScreen(
-                        user = state.user,
-                        onLogout = onLogout
-                    )
-                }
-
-                else -> {
+        ) { paddingValues ->
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+                val currentSession = findSession(state.sessions, selectedSessionIdState.value)
+                
+                if (currentSession != null) {
                     ProductDetail(
                         session = currentSession,
                         onBack = { selectedSessionIdState.value = null },
                         onComplete = {
                             homeViewModel.completeSession(currentSession.id)
                             selectedSessionIdState.value = null
-                            selectedTabState.value = MainTab.Sessions
                         },
                         onFavoriteToggle = { homeViewModel.toggleFavorite(it) }
+                    )
+                } else {
+                    when (selectedTabState.value) {
+                        MainTab.Home -> Home(
+                            homeViewModel = homeViewModel,
+                            onSessionClick = { selectedSessionIdState.value = it.id }
+                        )
+                        MainTab.Psychologists -> PsychologistsScreen()
+                        MainTab.ZenBot -> ZenBotScreen()
+                        MainTab.Sessions -> SessionsScreen(
+                            sessions = if (showOnlyFavorites.value) state.sessions.filter { it.isFavorite } else state.sessions,
+                            title = if (showOnlyFavorites.value) "Mis Favoritos" else "Sesiones para ti",
+                            onSessionClick = { selectedSessionIdState.value = it.id },
+                            onFavoriteToggle = { homeViewModel.toggleFavorite(it) }
+                        )
+                        MainTab.Profile -> ProfileScreen(
+                            user = state.user,
+                            onLogout = onLogout,
+                            onNavigateToFavorites = {
+                                showOnlyFavorites.value = true
+                                selectedTabState.value = MainTab.Sessions
+                            },
+                            onManageSubscription = { showSubscriptionState.value = true },
+                            onToggleTheme = { homeViewModel.toggleTheme() }
+                        )
+                    }
+                }
+
+                if (showSubscriptionState.value) {
+                    SubscriptionScreen(
+                        currentPlan = state.user.subscriptionPlan,
+                        onBack = { showSubscriptionState.value = false },
+                        onPlanSelected = { 
+                            homeViewModel.updateSubscription(it)
+                            showSubscriptionState.value = false
+                        }
                     )
                 }
             }
@@ -112,86 +137,35 @@ private fun findSession(sessions: List<MeditationSession>, sessionId: String?): 
 }
 
 @Composable
-private fun BreathingScreen() {
-    var isRunning by remember { mutableStateOf(false) }
-    var seconds by remember { mutableIntStateOf(45) }
-    val infiniteTransition = rememberInfiniteTransition(label = "breathing")
-    
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "scale"
-    )
-
-    LaunchedEffect(isRunning) {
-        if (isRunning) {
-            while (seconds > 0) {
-                kotlinx.coroutines.delay(1000)
-                seconds--
-            }
-            isRunning = false
-        }
-    }
-
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("Respiración guiada", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text("Inhala al expandirse, exhala al contraerse", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-        Box(modifier = Modifier.padding(vertical = 60.dp).size(260.dp), contentAlignment = Alignment.Center) {
-            // Círculos de fondo animados
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                modifier = Modifier.fillMaxSize(if (isRunning) scale else 0.8f)
-            ) {}
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(140.dp),
-                shadowElevation = 8.dp
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = if (!isRunning) "Listo" else if (scale > 1f) "Inhala" else "Exhala",
-                        color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-
-        Text(text = "${seconds}s", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Medium)
-        Spacer(modifier = Modifier.height(40.dp))
-        Button(
-            onClick = { if (!isRunning) seconds = 45; isRunning = !isRunning },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Text(if (isRunning) "Detener" else "Comenzar")
-        }
-    }
-}
-
-@Composable
 private fun SessionsScreen(
     sessions: List<MeditationSession>,
+    title: String,
     onSessionClick: (MeditationSession) -> Unit,
     onFavoriteToggle: (String) -> Unit
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
-            Text("Sesiones para ti", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Encuentra la práctica ideal para este momento", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                if (title == "Mis Favoritos") "Tus prácticas preferidas en un solo lugar" 
+                else "Encuentra la práctica ideal para este momento", 
+                style = MaterialTheme.typography.bodyMedium, 
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
+        
+        if (sessions.isEmpty()) {
+            item {
+                Box(modifier = Modifier.fillMaxWidth().padding(top = 80.dp), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("🌟", style = MaterialTheme.typography.displayMedium)
+                        Text("Aún no tienes favoritos", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.outline)
+                    }
+                }
+            }
+        }
+
         items(sessions, key = { it.id }) { session ->
             ProductCard(
                 session = session,
@@ -203,17 +177,19 @@ private fun SessionsScreen(
 }
 
 @Composable
-private fun ProfileScreen(user: NeurozenUser, onLogout: () -> Unit) {
+private fun ProfileScreen(
+    user: NeurozenUser,
+    onLogout: () -> Unit,
+    onNavigateToFavorites: () -> Unit,
+    onManageSubscription: () -> Unit,
+    onToggleTheme: () -> Unit
+) {
     Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            // Imagen de usuario real configurada
             Image(
                 painter = painterResource(id = R.drawable.usuario_demo),
                 contentDescription = "Foto de perfil",
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                modifier = Modifier.size(80.dp).clip(CircleShape).border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
                 contentScale = ContentScale.Crop
             )
             Column {
@@ -229,17 +205,51 @@ private fun ProfileScreen(user: NeurozenUser, onLogout: () -> Unit) {
 
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                ProfileMenuItem("🎨", "Tema: ${user.themePreference}")
-                ProfileMenuItem("🔔", "Recordatorios diarios")
-                ProfileMenuItem("🌟", "Sesiones favoritas (${user.streakDays})") {
-                    // Acción para ver favoritos
-                }
+                ProfileMenuItem("🎨", "Tema: ${user.themePreference}") { onToggleTheme() }
+                ProfileMenuItem("🌟", "Mis Favoritos") { onNavigateToFavorites() }
+                ProfileMenuItem("💳", "Gestionar Plan (${user.subscriptionPlan})") { onManageSubscription() }
             }
         }
 
         Spacer(modifier = Modifier.weight(1f))
         TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
             Text("Cerrar sesión")
+        }
+    }
+}
+
+@Composable
+private fun SubscriptionScreen(currentPlan: String, onBack: () -> Unit, onPlanSelected: (String) -> Unit) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp).background(MaterialTheme.colorScheme.background)) {
+        TextButton(onClick = onBack) { Text("← Volver al perfil") }
+        Text("Elige tu plan", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        val planes = listOf(
+            Triple("Básico", "Gratis", listOf("Test de estrés", "Panel básico", "Artículos")),
+            Triple("Avanzado", "$3.50", listOf("Todo en Básico", "Análisis biométrico", "Respiración guiada")),
+            Triple("Zen+", "$7.80", listOf("Todo en Avanzado", "Psicólogos certificados", "Sesiones Pro"))
+        )
+
+        planes.forEach { (titulo, precio, features) ->
+            PlanCard(title = titulo, price = precio, features = features, isCurrent = currentPlan.contains(titulo), onSelect = { onPlanSelected(titulo) })
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun PlanCard(title: String, price: String, features: List<String>, isCurrent: Boolean, onSelect: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(price, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+            Spacer(modifier = Modifier.height(12.dp))
+            features.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onSelect, enabled = !isCurrent, modifier = Modifier.fillMaxWidth()) {
+                Text(if (isCurrent) "Tu plan actual" else "Seleccionar")
+            }
         }
     }
 }
@@ -260,8 +270,8 @@ private fun StatCard(label: String, value: String, unit: String, icon: String, m
 
 @Composable
 private fun ProfileMenuItem(icon: String, label: String, onClick: () -> Unit = {}) {
-    Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(icon)
+    Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(icon, modifier = Modifier.padding(end = 16.dp))
         Text(label, style = MaterialTheme.typography.bodyLarge)
         Spacer(modifier = Modifier.weight(1f))
         Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

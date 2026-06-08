@@ -1,12 +1,12 @@
 package com.example.neurozen_front.neurozen.data.network
 
 object ApiConfig {
-    // IMPORTANTE PARA CELULAR REAL:
-    // 1. Cambia "10.0.2.2" por la IP de tu PC (ejemplo: "192.168.1.15")
-    // 2. Asegúrate de que tu celular y PC estén en el mismo Wi-Fi.
-    // 3. El puerto 8080 debe estar abierto en tu PC.
+    // 1. SI USAS EMULADOR: Deja "10.0.2.2"
+    // 2. SI USAS CELULAR FÍSICO: Pon la IP de tu PC (ej: "192.168.0.15")
+    // IMPORTANTE: PC y Celular deben estar en el mismo Wi-Fi.
     
-    private const val MY_PC_IP = "10.0.2.2" // <-- CAMBIA ESTO POR TU IP (ej: "192.168.1.15")
+    private const val CURRENT_IP = "192.168.0.90" // IP de tu PC detectada automáticamente
+    private const val PORT = "5059"
     
-    const val BASE_URL = "http://$MY_PC_IP:8080/api/v1/"
+    const val BASE_URL = "http://$CURRENT_IP:$PORT/"
 }

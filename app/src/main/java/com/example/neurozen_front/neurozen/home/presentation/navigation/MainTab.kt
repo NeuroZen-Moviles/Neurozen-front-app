@@ -1,15 +1,16 @@
 package com.example.neurozen_front.neurozen.home.presentation.navigation
 
-import com.example.neurozen_front.R
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class MainTab(
     val label: String,
-    val iconRes: Int,
-    val selectedIconRes: Int
+    val icon: ImageVector
 ) {
-    Home(label = "Inicio", iconRes = R.drawable.home, selectedIconRes = R.drawable.home_filled),
-    Psychologists(label = "Citas", iconRes = R.drawable.person, selectedIconRes = R.drawable.person_filled),
-    ZenBot(label = "ZenBot", iconRes = R.drawable.share, selectedIconRes = R.drawable.share),
-    Sessions(label = "Sesiones", iconRes = R.drawable.share, selectedIconRes = R.drawable.share),
-    Profile(label = "Perfil", iconRes = R.drawable.person, selectedIconRes = R.drawable.person_filled)
+    Home(label = "Inicio", icon = Icons.Default.Home),
+    Psychologists(label = "Citas", icon = Icons.Default.DateRange),
+    ZenBot(label = "ZenBot", icon = Icons.Default.Eco), // Hojita
+    Sessions(label = "Sesiones", icon = Icons.Default.MenuBook), // Libro
+    Profile(label = "Perfil", icon = Icons.Default.AccountCircle)
 }
