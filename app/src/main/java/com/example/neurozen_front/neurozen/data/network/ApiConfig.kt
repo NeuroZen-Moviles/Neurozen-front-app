@@ -5,7 +5,7 @@ object ApiConfig {
     // 2. SI USAS CELULAR FÍSICO: Pon la IP de tu PC (ej: "192.168.0.15")
     // IMPORTANTE: PC y Celular deben estar en el mismo Wi-Fi.
     
-    private const val CURRENT_IP = "192.168.0.90" // IP de tu PC detectada automáticamente
+    private const val CURRENT_IP = "192.168.88.12" // IP de tu PC detectada automáticamente
     private const val PORT = "5059"
     
     const val BASE_URL = "http://$CURRENT_IP:$PORT/"
