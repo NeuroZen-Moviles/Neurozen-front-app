@@ -36,6 +36,20 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            UserSession.state.collect { session ->
+                if (session.name != null) {
+                    _homeState.update { current ->
+                        current.copy(
+                            user = current.user.copy(
+                                name = session.name,
+                                email = session.email ?: current.user.email
+                            )
+                        )
+                    }
+                }
+            }
+        }
+        viewModelScope.launch {
             appointmentDao.getAllAppointments().collect { appointments ->
                 _homeState.update { it.copy(upcomingAppointments = appointments) }
             }
@@ -83,13 +97,32 @@ class HomeViewModel @Inject constructor(
 
                 result.onSuccess { dashboard ->
                     _homeState.update { current ->
+                        val updatedUser = current.user.copy(
+                            name = session.name ?: current.user.name,
+                            email = session.email ?: current.user.email
+                        )
+                        
+                        // Si hay una cita próxima en el dashboard, la guardamos/actualizamos localmente
+                        dashboard.nextAppointment?.let { remote ->
+                            viewModelScope.launch {
+                                appointmentDao.insertAppointment(
+                                    AppointmentEntity(
+                                        psychologistId = remote.id, // Usamos el ID de la cita o del profesional
+                                        psychologistName = remote.professionalName,
+                                        psychologistSpecialty = remote.professionalSpecialty,
+                                        dateMillis = parseIsoDate(remote.appointmentDate),
+                                        status = remote.status
+                                    )
+                                )
+                            }
+                        }
+
                         current.copy(
-                            user = current.user.copy(name = session.name ?: current.user.name),
+                            user = updatedUser,
                             stressLevel = dashboard.stressLevel,
-                            energyLevel = 7,
                             sleepHours = dashboard.sleepHours.toFloat(),
                             healthMetrics = listOf(
-                                HealthMetric("Estrés", "${dashboard.stressLevel}/10", "Nivel actual", dashboard.stressLevel / 10f),
+                                HealthMetric("Estrés", "${dashboard.stressLevel}/10", if(dashboard.stressLevel > 7) "Nivel alto" else "Bajo control", dashboard.stressLevel / 10f),
                                 HealthMetric("Sueño", "${dashboard.sleepHours} h", "Horas descansadas", dashboard.sleepHours / 12f),
                                 HealthMetric("Pulso", "${dashboard.heartRate} bpm", "Ritmo cardiaco", dashboard.heartRate / 150f)
                             ),
@@ -99,10 +132,12 @@ class HomeViewModel @Inject constructor(
                             lastSync = "Sincronizado ${formatNow()}"
                         )
                     }
-                }.onFailure {
+                }.onFailure { error ->
+                    Log.e("HomeViewModel", "Dashboard failed: ${error.message}")
                     _homeState.update { it.copy(isLoading = false, connectedToApi = false) }
                 }
             } catch (e: Exception) {
+                Log.e("HomeViewModel", "Dashboard exception", e)
                 _homeState.update { it.copy(isLoading = false) }
             }
         }
@@ -136,10 +171,10 @@ class HomeViewModel @Inject constructor(
                 description = it.description,
                 benefit = "Bienestar mental",
                 status = "Disponible",
-                imageUrl = if (it.imageUrl.isBlank()) backupImages[index % backupImages.size] else it.imageUrl,
+                imageUrl = if (it.imageUrl.isNullOrBlank()) backupImages[index % backupImages.size] else it.imageUrl,
                 audioUrl = it.audioUrl
             )
-        }.ifEmpty { _homeState.value.sessions }
+        }.ifEmpty { emptyList() }
     }
 
     fun toggleTheme() {
@@ -232,4 +267,13 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun formatNow(): String = DateFormat.format("HH:mm", Date()).toString()
+
+    private fun parseIsoDate(dateStr: String): Long {
+        return try {
+            val format = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+            format.parse(dateStr)?.time ?: System.currentTimeMillis()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
+    }
 }
