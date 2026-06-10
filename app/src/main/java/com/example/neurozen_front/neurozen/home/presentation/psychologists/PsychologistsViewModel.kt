@@ -106,11 +106,15 @@ class PsychologistsViewModel @Inject constructor(
             val token = UserSession.bearerTokenOrEmpty()
             val userId = session.userId ?: return@launch
             
-            val isoDate = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date(dateMillis))
+            // Usamos formato ISO 8601 con 'Z' para compatibilidad con .NET DateTime
+            val isoDate = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+                timeZone = java.util.TimeZone.getTimeZone("UTC")
+            }.format(Date(dateMillis))
+
             val request = AppointmentRequest(
                 patientId = userId,
                 professionalId = professional.id,
-                scheduledAt = isoDate,
+                appointmentDate = isoDate,
                 appointmentType = 1 
             )
             
