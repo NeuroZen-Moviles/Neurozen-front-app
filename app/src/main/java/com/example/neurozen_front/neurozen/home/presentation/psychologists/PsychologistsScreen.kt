@@ -344,8 +344,18 @@ fun PsychologistCard(professional: ProfessionalResource, onBookClick: () -> Unit
                     text = professional.specialization,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Bold
                 )
+                
+                if (!professional.bio.isNullOrBlank()) {
+                    Text(
+                        text = professional.bio,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        maxLines = 2,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
@@ -354,9 +364,14 @@ fun PsychologistCard(professional: ProfessionalResource, onBookClick: () -> Unit
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(14.dp))
-                        Text(" 4.9", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(14.dp))
+                            Text(" ${professional.rating ?: 5.0}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
+                        if (professional.price != null && professional.price > 0) {
+                            Text("S/ ${professional.price}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+                        }
                     }
                     
                     Button(

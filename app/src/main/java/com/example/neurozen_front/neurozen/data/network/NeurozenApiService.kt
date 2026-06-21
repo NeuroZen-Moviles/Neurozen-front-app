@@ -28,7 +28,7 @@ interface NeurozenApiService {
 
     @GET("api/v1/professionals/{id}")
     suspend fun getProfessionalById(
-        @Path("id") id: String, // Cambiado de Long a String (Guid)
+        @Path("id") id: Int,
         @Header("Authorization") bearerToken: String
     ): Response<ProfessionalResource>
 
@@ -42,7 +42,7 @@ interface NeurozenApiService {
 
     @GET("api/v1/patients/{patientId}/appointments")
     suspend fun getPatientAppointments(
-        @Path("patientId") patientId: String, // Cambiado de Long a String (Guid)
+        @Path("patientId") patientId: String,
         @Header("Authorization") bearerToken: String
     ): Response<List<AppointmentResponse>>
 

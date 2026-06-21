@@ -4,38 +4,39 @@ import com.google.gson.annotations.SerializedName
 
 // --- Auth Models ---
 data class SignInRequest(
-    @SerializedName("Username") val username: String,
-    @SerializedName("Password") val password: String
+    @SerializedName(value = "Username", alternate = ["username"]) val username: String,
+    @SerializedName(value = "Password", alternate = ["password"]) val password: String
 )
 
 data class SignInResponse(
-    @SerializedName(value = "Id", alternate = ["id"]) val id: String,
+    @SerializedName(value = "Id", alternate = ["id"]) val id: String, // UUID del usuario
     @SerializedName(value = "Username", alternate = ["username"]) val username: String,
-    @SerializedName(value = "Token", alternate = ["token"]) val token: String
+    @SerializedName(value = "Token", alternate = ["token"]) val token: String,
+    @SerializedName(value = "Email", alternate = ["email"]) val email: String? = ""
 )
 
 data class AuthSession(
     val token: String,
-    val userId: String,
+    val userId: String, // UUID del usuario
     val username: String,
     val email: String
 )
 
 data class SignUpRequest(
-    @SerializedName("Username") val username: String,
-    @SerializedName("Password") val password: String,
-    @SerializedName("Email") val email: String
+    @SerializedName(value = "Username", alternate = ["username"]) val username: String,
+    @SerializedName(value = "Password", alternate = ["password"]) val password: String,
+    @SerializedName(value = "Email", alternate = ["email"]) val email: String
 )
 
 data class SignUpResponse(
-    @SerializedName(value = "Id", alternate = ["id"]) val id: String,
+    @SerializedName(value = "Id", alternate = ["id"]) val id: String, // UUID del usuario
     @SerializedName(value = "Username", alternate = ["username"]) val username: String,
     @SerializedName(value = "Email", alternate = ["email"]) val email: String
 )
 
 // --- Professionals Models ---
 data class ProfessionalResource(
-    @SerializedName(value = "Id", alternate = ["id"]) val id: String,
+    @SerializedName(value = "Id", alternate = ["id"]) val id: Int, // Los profesionales parecen seguir siendo Int
     @SerializedName(value = "FirstName", alternate = ["firstName", "Name", "name"]) val firstName: String,
     @SerializedName(value = "LastName", alternate = ["lastName", "lastname"]) val lastName: String? = "",
     @SerializedName(value = "Specialization", alternate = ["specialization", "Specialty", "specialty"]) val specialization: String,
@@ -51,17 +52,18 @@ data class ProfessionalResource(
 
 // --- Appointments Models ---
 data class AppointmentRequest(
-    @SerializedName("PatientId") val patientId: String,
-    @SerializedName("ProfessionalId") val professionalId: String,
-    @SerializedName("AppointmentDate") val appointmentDate: String,
-    @SerializedName("AppointmentType") val appointmentType: Int
+    @SerializedName("PatientId") val patientId: String, // UUID del usuario
+    @SerializedName("ProfessionalId") val professionalId: Int,
+    @SerializedName("AppointmentDateTime") val appointmentDateTime: String,
+    @SerializedName("AppointmentType") val appointmentType: Int,
+    @SerializedName("NotasAdicionales") val notasAdicionales: String? = null
 )
 
 data class AppointmentResponse(
-    @SerializedName(value = "Id", alternate = ["id"]) val id: String,
-    @SerializedName(value = "PatientId", alternate = ["patientId"]) val patientId: String,
-    @SerializedName(value = "ProfessionalId", alternate = ["professionalId"]) val professionalId: String,
-    @SerializedName(value = "AppointmentDate", alternate = ["appointmentDate"]) val appointmentDate: String,
+    @SerializedName(value = "Id", alternate = ["id"]) val id: Int,
+    @SerializedName(value = "PatientId", alternate = ["patientId"]) val patientId: String, // UUID
+    @SerializedName(value = "ProfessionalId", alternate = ["professionalId"]) val professionalId: Int,
+    @SerializedName(value = "AppointmentDateTime", alternate = ["appointmentDateTime"]) val appointmentDateTime: String,
     @SerializedName(value = "Status", alternate = ["status"]) val status: String,
     @SerializedName(value = "ProfessionalName", alternate = ["professionalName"]) val professionalName: String? = null
 )
@@ -75,15 +77,15 @@ data class DashboardResponse(
 )
 
 data class NextAppointment(
-    @SerializedName(value = "Id", alternate = ["id"]) val id: String,
-    @SerializedName(value = "AppointmentDate", alternate = ["appointmentDate"]) val appointmentDate: String,
+    @SerializedName(value = "Id", alternate = ["id"]) val id: Int,
+    @SerializedName(value = "AppointmentDateTime", alternate = ["appointmentDateTime", "AppointmentDate"]) val appointmentDateTime: String,
     @SerializedName(value = "ProfessionalName", alternate = ["professionalName"]) val professionalName: String,
     @SerializedName(value = "ProfessionalSpecialty", alternate = ["professionalSpecialty", "Specialty"]) val professionalSpecialty: String,
     @SerializedName(value = "Status", alternate = ["status"]) val status: String
 )
 
 data class MeditationResource(
-    @SerializedName(value = "Id", alternate = ["id"]) val id: String,
+    @SerializedName(value = "Id", alternate = ["id"]) val id: Int,
     @SerializedName(value = "Title", alternate = ["title"]) val title: String,
     @SerializedName(value = "Description", alternate = ["description"]) val description: String,
     @SerializedName(value = "DurationMinutes", alternate = ["durationMinutes"]) val durationMinutes: Int,
@@ -93,7 +95,7 @@ data class MeditationResource(
 
 // --- Subscriptions Models ---
 data class SubscriptionRequest(
-    @SerializedName("UserId") val userId: String,
+    @SerializedName("UserId") val userId: String, // UUID
     @SerializedName("PlanId") val planId: Int,
     @SerializedName("NameUser") val nameUser: String,
     @SerializedName("LastNameUser") val lastNameUser: String,
@@ -101,8 +103,8 @@ data class SubscriptionRequest(
 )
 
 data class SubscriptionResource(
-    @SerializedName(value = "Id", alternate = ["id"]) val id: String,
-    @SerializedName(value = "UserId", alternate = ["userId"]) val userId: String,
+    @SerializedName(value = "Id", alternate = ["id"]) val id: Int,
+    @SerializedName(value = "UserId", alternate = ["userId"]) val userId: String, // UUID
     @SerializedName(value = "PlanName", alternate = ["planName"]) val planName: String,
     @SerializedName(value = "Status", alternate = ["status"]) val status: String,
     @SerializedName(value = "StartDate", alternate = ["startDate"]) val startDate: String,
@@ -111,7 +113,7 @@ data class SubscriptionResource(
 
 // --- Health Metrics Models (Triggers/Emociones) ---
 data class HealthMetricRequest(
-    @SerializedName("UserId") val userId: String,
+    @SerializedName("UserId") val userId: String, // UUID
     @SerializedName("StressLevel") val stressLevel: Int,
     @SerializedName("HeartRate") val heartRate: Int,
     @SerializedName("SleepHours") val sleepHours: Int,
@@ -119,8 +121,8 @@ data class HealthMetricRequest(
 )
 
 data class HealthMetricResource(
-    @SerializedName(value = "Id", alternate = ["id"]) val id: String,
-    @SerializedName(value = "UserId", alternate = ["userId"]) val userId: String,
+    @SerializedName(value = "Id", alternate = ["id"]) val id: Int,
+    @SerializedName(value = "UserId", alternate = ["userId"]) val userId: String, // UUID
     @SerializedName(value = "StressLevel", alternate = ["stressLevel"]) val stressLevel: Int,
     @SerializedName(value = "HeartRate", alternate = ["heartRate"]) val heartRate: Int,
     @SerializedName(value = "SleepHours", alternate = ["sleepHours"]) val sleepHours: Int,

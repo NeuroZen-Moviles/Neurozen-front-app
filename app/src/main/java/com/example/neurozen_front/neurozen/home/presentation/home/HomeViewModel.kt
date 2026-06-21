@@ -107,10 +107,10 @@ class HomeViewModel @Inject constructor(
                             viewModelScope.launch {
                                 appointmentDao.insertAppointment(
                                     AppointmentEntity(
-                                        psychologistId = remote.id, // Usamos el ID de la cita o del profesional
+                                        psychologistId = remote.id.toString(),
                                         psychologistName = remote.professionalName,
                                         psychologistSpecialty = remote.professionalSpecialty,
-                                        dateMillis = parseIsoDate(remote.appointmentDate),
+                                        dateMillis = parseIsoDate(remote.appointmentDateTime),
                                         status = remote.status
                                     )
                                 )
@@ -163,7 +163,7 @@ class HomeViewModel @Inject constructor(
         )
         return sessions.mapIndexed { index, it -> 
             MeditationSession(
-                id = it.id,
+                id = it.id.toString(),
                 title = it.title,
                 durationMinutes = it.durationMinutes,
                 type = if (it.title.lowercase().contains("respiración")) "Respiración" else "Meditación",

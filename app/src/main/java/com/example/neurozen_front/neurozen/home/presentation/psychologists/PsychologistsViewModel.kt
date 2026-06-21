@@ -78,10 +78,10 @@ class PsychologistsViewModel @Inject constructor(
                         val name = remote.professionalName ?: "Especialista Neurozen"
                         appointmentDao.insertAppointment(
                             AppointmentEntity(
-                                psychologistId = remote.professionalId,
+                                psychologistId = remote.professionalId.toString(),
                                 psychologistName = name,
                                 psychologistSpecialty = "Consulta Programada",
-                                dateMillis = parseIsoDate(remote.appointmentDate),
+                                dateMillis = parseIsoDate(remote.appointmentDateTime),
                                 status = remote.status
                             )
                         )
@@ -114,15 +114,16 @@ class PsychologistsViewModel @Inject constructor(
             val request = AppointmentRequest(
                 patientId = userId,
                 professionalId = professional.id,
-                appointmentDate = isoDate,
-                appointmentType = 1 
+                appointmentDateTime = isoDate,
+                appointmentType = 1,
+                notasAdicionales = ""
             )
             
             repository.createAppointment(request, token)
                 .onSuccess { response ->
                     appointmentDao.insertAppointment(
                         AppointmentEntity(
-                            psychologistId = professional.id,
+                            psychologistId = professional.id.toString(),
                             psychologistName = "${professional.firstName} ${professional.lastName}",
                             psychologistSpecialty = professional.specialization,
                             dateMillis = dateMillis,

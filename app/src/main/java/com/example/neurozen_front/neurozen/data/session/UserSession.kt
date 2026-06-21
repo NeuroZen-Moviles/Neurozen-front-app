@@ -9,7 +9,7 @@ data class UserSessionState(
     val token: String? = null,
     val refreshToken: String? = null,
     val expiresIn: Long? = null,
-    val userId: String? = null, // Cambiado de Long a String para GUID de .NET
+    val userId: String? = null, // Volvemos a String porque el backend usa UUIDs
     val email: String? = null,
     val name: String? = null
 )
